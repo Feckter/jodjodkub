@@ -1,0 +1,84 @@
+// db.js — จุดเชื่อมต่อ PostgreSQL เพียงจุดเดียวของทั้งโปรเจค
+import pg from 'pg';
+
+const { Pool } = pg;
+
+// อ่านตัวเลข NUMERIC ให้เป็น Number ของ JS (ปกติ pg คืนมาเป็นสตริง)
+pg.types.setTypeParser(1700, (v) => (v === null ? null : Number(v)));
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // บังคับเขตเวลาไทย เพื่อให้การสรุปยอด "วันนี้" และ "เดือนนี้" ตรงกับเวลาบ้านเรา
+  options: '-c timezone=Asia/Bangkok',
+});
+
+/** รัน SQL หนึ่งคำสั่ง — ใช้ $1, $2 เสมอ ห้ามต่อสตริงค่าเข้าไปใน sql */
+export async function q(sql, params = []) {
+  const res = await pool.query(sql, params);
+  return res;
+}
+
+/** สร้างตารางทั้งหมดถ้ายังไม่มี — เรียกตอนเซิร์ฟเวอร์บูต */
+export async function migrate() {
+  await q(`
+    CREATE TABLE IF NOT EXISTS users (
+      id            SERIAL PRIMARY KEY,
+      email         TEXT UNIQUE NOT NULL,
+      display_name  TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await q(`
+    CREATE TABLE IF NOT EXISTS slips (
+      id         SERIAL PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      file_path  TEXT NOT NULL,
+      mime       TEXT,
+      bytes      INTEGER,
+      ocr_text   TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await q(`
+    CREATE TABLE IF NOT EXISTS entries (
+      id          SERIAL PRIMARY KEY,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type        TEXT NOT NULL CHECK (type IN ('income','expense')),
+      amount      NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+      category    TEXT,
+      note        TEXT,
+      occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      slip_id     INTEGER REFERENCES slips(id) ON DELETE SET NULL,
+      txid        TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await q(`
+    CREATE TABLE IF NOT EXISTS budgets (
+      id       SERIAL PRIMARY KEY,
+      user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      month    TEXT NOT NULL,          -- รูปแบบ 'YYYY-MM'
+      category TEXT,                   -- NULL = งบรวมทั้งเดือน
+      amount   NUMERIC(12,2) NOT NULL CHECK (amount > 0)
+    );
+  `);
+
+  // กันบันทึกสลิปใบเดิมซ้ำ (เฉพาะรายการที่มีเลขอ้างอิง)
+  await q(`
+    CREATE UNIQUE INDEX IF NOT EXISTS entries_user_txid_uniq
+    ON entries (user_id, txid) WHERE txid IS NOT NULL;
+  `);
+
+  // งบหนึ่งเดือน หนึ่งหมวด ตั้งได้ครั้งเดียว
+  await q(`
+    CREATE UNIQUE INDEX IF NOT EXISTS budgets_user_month_cat_uniq
+    ON budgets (user_id, month, COALESCE(category, ''));
+  `);
+
+  await q(`CREATE INDEX IF NOT EXISTS entries_user_time_idx ON entries (user_id, occurred_at DESC);`);
+}

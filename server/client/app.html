@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JodJodKUB</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">฿</span> JodJodKUB</div>
+    <div class="topbar-actions">
+      <span class="who" id="who"></span>
+      <button class="btn ghost small" id="btnChangePw">เปลี่ยนรหัสผ่าน</button>
+      <button class="btn ghost small" id="btnLogout">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="dashboard" class="active">แดชบอร์ด</button>
+    <button data-tab="entries">รายการ</button>
+    <button data-tab="budget">งบประมาณ</button>
+    <button data-tab="report">รายงาน</button>
+    <button data-tab="admin" id="tabAdmin" class="hide">แอดมิน</button>
+  </nav>
+
+  <main class="page">
+
+    <!-- ===== แดชบอร์ด ===== -->
+    <section id="panel-dashboard">
+      <div class="kpis">
+        <div class="kpi">
+          <span class="kpi-label">วันนี้ · รายรับ</span>
+          <span class="kpi-value income" id="kpiTodayIn">0.00</span>
+          <span class="kpi-foot">บาท</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">วันนี้ · รายจ่าย</span>
+          <span class="kpi-value expense" id="kpiTodayEx">0.00</span>
+          <span class="kpi-foot">บาท</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">เดือนนี้ · รายรับ</span>
+          <span class="kpi-value income" id="kpiMonthIn">0.00</span>
+          <span class="kpi-foot">บาท</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">เดือนนี้ · รายจ่าย</span>
+          <span class="kpi-value expense" id="kpiMonthEx">0.00</span>
+          <span class="kpi-foot">บาท</span>
+        </div>
+        <div class="kpi accent">
+          <span class="kpi-label">เดือนนี้ · คงเหลือ</span>
+          <span class="kpi-value" id="kpiMonthBal">0.00</span>
+          <span class="kpi-foot" id="kpiMonthName">บาท</span>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="col">
+          <div class="card">
+            <div class="card-head">
+              <h2>รายรับ-รายจ่ายย้อนหลัง</h2>
+              <span class="card-sub">12 เดือนล่าสุด</span>
+            </div>
+            <div class="chart-box tall"><canvas id="chartMonths"></canvas></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>รายการล่าสุด</h2>
+              <span class="card-sub"><a href="#" data-goto="entries">ดูทั้งหมด</a></span>
+            </div>
+            <div class="feed" id="dashRecent"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="card">
+            <div class="card-head">
+              <h2>งบประมาณเดือนนี้</h2>
+              <span class="card-sub"><a href="#" data-goto="budget">ตั้งงบ</a></span>
+            </div>
+            <div id="dashBudgets"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>ใช้จ่ายมากสุดเดือนนี้</h2></div>
+            <div class="rank" id="dashTopCategories"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== รายการ ===== -->
+    <section id="panel-entries" class="hide">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h2>เพิ่มรายการเอง</h2></div>
+          <form id="addForm">
+            <div class="form-grid">
+              <div class="field">
+                <label for="addType">ประเภท</label>
+                <select id="addType">
+                  <option value="expense">รายจ่าย</option>
+                  <option value="income">รายรับ</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="addAmount">จำนวนเงิน (บาท)</label>
+                <input id="addAmount" type="number" step="0.01" min="0.01" placeholder="0.00" required />
+              </div>
+              <div class="field">
+                <label for="addCategory">หมวดหมู่</label>
+                <input id="addCategory" list="categoryList" placeholder="เช่น อาหาร" />
+                <datalist id="categoryList"></datalist>
+              </div>
+              <div class="field">
+                <label for="addWhen">วันเวลา</label>
+                <input id="addWhen" type="datetime-local" />
+              </div>
+              <div class="field full">
+                <label for="addNote">โน้ต</label>
+                <input id="addNote" placeholder="รายละเอียดเพิ่มเติม" />
+              </div>
+            </div>
+            <div class="actions"><button class="btn" type="submit">บันทึกรายการ</button></div>
+            <div class="msg" id="addMsg"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>อัปโหลดสลิป</h2>
+            <span class="card-sub">อ่านให้อัตโนมัติ</span>
+          </div>
+          <p class="hint">ระบบจะอ่านยอดเงิน วันเวลา และเลขอ้างอิงมาให้ ตรวจดูก่อนกดยืนยันเสมอ</p>
+          <div class="dropzone">
+            <input id="slipFile" type="file" accept="image/jpeg,image/png,image/webp" />
+          </div>
+          <div class="actions" style="margin-top:14px"><button class="btn" id="btnReadSlip">อ่านสลิป</button></div>
+          <div class="msg" id="slipMsg"></div>
+
+          <!-- ฟอร์มยืนยัน โผล่หลังอ่านสลิปเสร็จ -->
+          <form id="slipConfirm" class="hide" style="margin-top:16px; border-top:1px solid var(--line); padding-top:18px">
+            <img id="slipImage" class="slip-preview" alt="รูปสลิปที่อัปโหลด" />
+            <div class="form-grid" style="margin-top:16px">
+              <div class="field">
+                <label for="slipType">ประเภท</label>
+                <select id="slipType">
+                  <option value="expense">รายจ่าย</option>
+                  <option value="income">รายรับ</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="slipAmount">จำนวนเงิน (บาท)</label>
+                <input id="slipAmount" type="number" step="0.01" min="0.01" required />
+              </div>
+              <div class="field">
+                <label for="slipCategory">หมวดหมู่</label>
+                <input id="slipCategory" list="categoryList" value="สลิป" />
+              </div>
+              <div class="field">
+                <label for="slipWhen">วันเวลา</label>
+                <input id="slipWhen" type="datetime-local" />
+              </div>
+              <div class="field full">
+                <label for="slipNote">โน้ต</label>
+                <input id="slipNote" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn" type="submit">ยืนยันบันทึก</button>
+              <button class="btn ghost" type="button" id="btnCancelSlip">ยกเลิก</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="card-head">
+          <h2>รายการของฉัน</h2>
+          <span class="card-sub" id="entriesCount"></span>
+        </div>
+        <div class="row" style="margin-bottom:18px">
+          <div>
+            <label for="fltMonth">เดือน</label>
+            <input id="fltMonth" type="month" />
+          </div>
+          <div>
+            <label for="fltType">ประเภท</label>
+            <select id="fltType">
+              <option value="">ทั้งหมด</option>
+              <option value="income">รายรับ</option>
+              <option value="expense">รายจ่าย</option>
+            </select>
+          </div>
+          <div class="fit"><button class="btn ghost" id="btnFilter">กรอง</button></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>วันเวลา</th><th>ประเภท</th><th class="num">จำนวน</th><th>หมวด</th><th>โน้ต</th><th>สลิป</th><th></th></tr>
+            </thead>
+            <tbody id="entriesBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== งบประมาณ ===== -->
+    <section id="panel-budget" class="hide">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h2>ตั้งงบประมาณ</h2></div>
+          <p class="hint">เว้นช่องหมวดหมู่ไว้ = ตั้งงบรวมของทั้งเดือน</p>
+          <form id="budgetForm">
+            <div class="form-grid">
+              <div class="field">
+                <label for="budMonth">เดือน</label>
+                <input id="budMonth" type="month" required />
+              </div>
+              <div class="field">
+                <label for="budAmount">จำนวนงบ (บาท)</label>
+                <input id="budAmount" type="number" step="0.01" min="0.01" placeholder="0.00" required />
+              </div>
+              <div class="field full">
+                <label for="budCategory">หมวดหมู่</label>
+                <input id="budCategory" list="categoryList" placeholder="เว้นว่างเพื่อตั้งงบรวมทั้งเดือน" />
+              </div>
+            </div>
+            <div class="actions"><button class="btn" type="submit">บันทึกงบ</button></div>
+            <div class="msg" id="budgetMsg"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>งบของเดือนที่เลือก</h2>
+            <span class="card-sub" id="budgetMonthLabel"></span>
+          </div>
+          <div id="budgetList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== รายงาน ===== -->
+    <section id="panel-report" class="hide">
+      <div class="card">
+        <div class="card-head"><h2>รายงานรายเดือน</h2></div>
+        <div class="row">
+          <div>
+            <label for="repMonth">เลือกเดือน</label>
+            <input id="repMonth" type="month" />
+          </div>
+          <div class="fit"><button class="btn ghost" id="btnLoadReport">ดูรายงาน</button></div>
+          <div class="fit"><button class="btn" id="btnExport">ส่งออก CSV</button></div>
+        </div>
+        <div class="msg" id="reportMsg"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>รายรับ-รายจ่ายรายวัน</h2>
+          <span class="card-sub" id="reportMonthLabel"></span>
+        </div>
+        <div class="chart-box tall"><canvas id="chartDaily"></canvas></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h2>รายจ่ายแยกตามหมวด</h2></div>
+          <div class="chart-box"><canvas id="chartExpenseCat"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>รายรับแยกตามหมวด</h2></div>
+          <div class="chart-box"><canvas id="chartIncomeCat"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== แอดมิน ===== -->
+    <section id="panel-admin" class="hide">
+      <div class="card">
+        <div class="card-head"><h2>สมาชิกทั้งหมด</h2></div>
+        <p class="hint">แอดมินจัดการบัญชีสมาชิกได้ แต่ดูรายการเงินของสมาชิกคนอื่นไม่ได้</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>อีเมล</th><th>ชื่อ</th><th>บทบาท</th><th>สมัครเมื่อ</th><th></th></tr></thead>
+            <tbody id="adminBody"></tbody>
+          </table>
+        </div>
+        <div class="msg" id="adminMsg"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- กล่องเปลี่ยนรหัสผ่าน -->
+  <dialog id="pwDialog">
+    <form id="pwForm">
+      <h2 style="margin-bottom:16px">เปลี่ยนรหัสผ่าน</h2>
+      <div class="field">
+        <label for="pwCurrent">รหัสผ่านเดิม</label>
+        <input id="pwCurrent" type="password" autocomplete="current-password" required />
+      </div>
+      <div class="field">
+        <label for="pwNew">รหัสผ่านใหม่</label>
+        <input id="pwNew" type="password" autocomplete="new-password" minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร" required />
+      </div>
+      <div class="actions">
+        <button class="btn" type="submit">บันทึก</button>
+        <button class="btn ghost" type="button" id="pwCancel">ยกเลิก</button>
+      </div>
+      <div class="msg" id="pwMsg"></div>
+    </form>
+  </dialog>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/slip.js"></script>
+  <script src="/js/budget.js"></script>
+  <script src="/js/report.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>
