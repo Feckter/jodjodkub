@@ -1,5 +1,10 @@
 node_modules/
-server/.env
 server/uploads/
 server/tessdata/
 *.log
+
+# ไฟล์ตั้งค่าทุกแบบมีรหัสผ่านอยู่ข้างใน ห้ามขึ้น git
+# ยกเว้น .env.example ที่เป็นแค่ตัวอย่างไม่มีค่าจริง
+server/.env
+server/.env.*
+!server/.env.example
