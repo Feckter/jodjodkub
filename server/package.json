@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "seed:admin": "node src/seedAdmin.js"
+    "seed:admin": "node src/seedAdmin.js",
+    "set:password": "node src/setPassword.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
