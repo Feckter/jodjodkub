@@ -11,10 +11,13 @@ import bcrypt from 'bcryptjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS = path.join(HERE, 'uploads');
 
-const DEMO_EMAIL = 'demo@jodjodkub.app';
-const DEMO_NAME = 'ณัฐพงศ์ (เดโม่)';
-const DEMO_PASSWORD = 'demo1234';
-const SOURCE_USER = 8; // adminfirst@gmail.com — ก๊อปสลิปมาจากบัญชีนี้
+const DEMO_EMAIL = process.env.DEMO_EMAIL || 'demo@jodjodkub.app';
+const DEMO_NAME = process.env.DEMO_NAME || 'ณัฐพงศ์ (เดโม่)';
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'demo1234';
+// ปกติสร้างเป็นสมาชิกธรรมดา — บนเว็บสาธารณะที่แจกรหัสให้คนอื่นลอง
+// ถ้าเป็นแอดมินจะเข้าไปลบบัญชีคนอื่นได้ ใส่ DEMO_ADMIN=1 ถ้าตั้งใจให้เป็นแอดมินจริง ๆ
+const DEMO_ROLE = process.env.DEMO_ADMIN === '1' ? 'admin' : 'user';
+const SOURCE_USER = 8; // adminfirst@gmail.com — ก๊อปสลิปมาจากบัญชีนี้ (ถ้ามี)
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, options: '-c timezone=Asia/Bangkok' });
 const q = (s, p = []) => pool.query(s, p).then((r) => r.rows);
@@ -123,11 +126,10 @@ for (const u of old) {
   fs.rmSync(path.join(UPLOADS, String(u.id)), { recursive: true, force: true });
 }
 
-// ตั้งเป็นแอดมิน เพื่อให้ถ่ายภาพหน้าจอหน้าจัดการสมาชิกได้ด้วย
 const [user] = await q(
   `INSERT INTO users (email, display_name, password_hash, role, created_at)
-   VALUES ($1, $2, $3, 'admin', $4) RETURNING id`,
-  [DEMO_EMAIL, DEMO_NAME, await bcrypt.hash(DEMO_PASSWORD, 10), '2026-04-01T09:00:00+07:00']
+   VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+  [DEMO_EMAIL, DEMO_NAME, await bcrypt.hash(DEMO_PASSWORD, 10), DEMO_ROLE, '2026-04-01T09:00:00+07:00']
 );
 const uid = user.id;
 
@@ -183,7 +185,8 @@ const summary = await q(
           COUNT(*)::int n
    FROM entries WHERE user_id = $1 GROUP BY 1 ORDER BY 1`, [uid]
 );
-console.log('demo user id:', uid, '| email:', DEMO_EMAIL, '| password:', DEMO_PASSWORD);
-console.log('slips copied:', slipIds.length);
+console.log('demo user id:', uid, '| email:', DEMO_EMAIL, '| password:', DEMO_PASSWORD, '| role:', DEMO_ROLE);
+console.log('slips copied:', slipIds.length,
+  slipIds.length ? '' : '(ฐานข้อมูลนี้ไม่มีสลิปต้นทาง — รายการเงินจะไม่มีรูปแนบ)');
 console.table(summary);
 await pool.end();
