@@ -3,7 +3,15 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { q } from './db.js';
 
-const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+// ห้ามมีค่าสำรองในโค้ด — ถ้าลืมตั้งบนเซิร์ฟเวอร์จริง ค่าสำรองที่ทุกคนอ่านได้จาก
+// โค้ดสาธารณะจะกลายเป็นกุญแจปลอม token เข้าบัญชีใครก็ได้ จึงให้หยุดทำงานไปเลย
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET || SECRET.length < 16) {
+  console.error('\nยังไม่ได้ตั้ง JWT_SECRET (หรือสั้นเกินไป ต้องยาวอย่างน้อย 16 ตัวอักษร)');
+  console.error('ตั้งใน server/.env หรือใน environment variables ของผู้ให้บริการ');
+  console.error('สุ่มค่าได้ด้วย:  node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"\n');
+  process.exit(1);
+}
 const TOKEN_DAYS = 7;
 
 export function hashPassword(plain) {

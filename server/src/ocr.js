@@ -19,12 +19,16 @@ function getWorker() {
   return workerPromise;
 }
 
+// ภาพยิ่งใหญ่ OCR ยิ่งแม่นแต่ยิ่งกินแรม เซิร์ฟเวอร์แพ็กฟรี (แรม 512MB) อาจไม่พอ
+// ลดค่านี้ผ่าน environment variable ได้โดยไม่ต้องแก้โค้ด
+const OCR_WIDTH = Number(process.env.OCR_WIDTH || 1600);
+
 /** เตรียมภาพให้ OCR อ่านง่ายขึ้น: หมุนตาม EXIF, ขาวดำ, ขยาย, ดันคอนทราสต์ */
 function preprocess(filePath) {
   return sharp(filePath)
     .rotate()
     .grayscale()
-    .resize({ width: 1600, withoutEnlargement: false })
+    .resize({ width: OCR_WIDTH, withoutEnlargement: false })
     .normalise()
     .png()
     .toBuffer();

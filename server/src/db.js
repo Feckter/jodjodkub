@@ -6,16 +6,32 @@ const { Pool } = pg;
 // อ่านตัวเลข NUMERIC ให้เป็น Number ของ JS (ปกติ pg คืนมาเป็นสตริง)
 pg.types.setTypeParser(1700, (v) => (v === null ? null : Number(v)));
 
+const url = process.env.DATABASE_URL || '';
+// ฐานข้อมูลบนคลาวด์บังคับให้เชื่อมต่อแบบเข้ารหัส ส่วนบนเครื่องตัวเองไม่ต้อง
+const isLocal = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url);
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // บังคับเขตเวลาไทย เพื่อให้การสรุปยอด "วันนี้" และ "เดือนนี้" ตรงกับเวลาบ้านเรา
-  options: '-c timezone=Asia/Bangkok',
+  connectionString: url,
+  ssl: isLocal ? false : { rejectUnauthorized: false },
 });
 
-/** รัน SQL หนึ่งคำสั่ง — ใช้ $1, $2 เสมอ ห้ามต่อสตริงค่าเข้าไปใน sql */
+/** รัน SQL หนึ่งคำสั่ง — ใช้ $1, $2 เสมอ ห้ามต่อสตริงค่าเข้าไปใน sql
+ *
+ *  บังคับเขตเวลาไทยครั้งแรกที่หยิบ connection แต่ละเส้นมาใช้ เพื่อให้การสรุปยอด
+ *  "วันนี้" และ "เดือนนี้" ตรงกับเวลาบ้านเรา — ทำด้วย SQL ธรรมดาแทนการส่ง options
+ *  ตอนเชื่อมต่อ เพราะผู้ให้บริการที่มี connection pooler คั่นอยู่มักไม่ยอมรับ options
+ */
 export async function q(sql, params = []) {
-  const res = await pool.query(sql, params);
-  return res;
+  const client = await pool.connect();
+  try {
+    if (!client.timezoneReady) {
+      await client.query("SET TIME ZONE 'Asia/Bangkok'");
+      client.timezoneReady = true;
+    }
+    return await client.query(sql, params);
+  } finally {
+    client.release();
+  }
 }
 
 /** สร้างตารางทั้งหมดถ้ายังไม่มี — เรียกตอนเซิร์ฟเวอร์บูต */
